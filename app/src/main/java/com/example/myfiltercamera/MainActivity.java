@@ -1,15 +1,20 @@
 package com.example.myfiltercamera;
 
+import android.os.Environment;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
@@ -20,34 +25,48 @@ import org.opencv.core.MatOfInt;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.video.BackgroundSubtractorMOG2;
 import org.opencv.video.Video;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
-public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
+public class MainActivity extends AppCompatActivity implements JavaCameraView.CvCameraViewListener2 {
 
     // Native 함수를 사용하기 위해 먼저 선언해두는 부분입니다.
     // 이 함수는 Negative filter에서 사용하고자 했었습니다.
     // 미완성입니다.
-//    public native void convertNegative(long matAddrInput, long matAddrResult);
+    public native void convertNegative(long matAddrInput, long matAddrResult);
 
     // 이 부분은 Android.mk의 LOCAL_MODULE에 입력한 lib 값을 사용하겠다고 선언해주는 부분입니다.
-//    static {
-//        System.loadLibrary("opencv_java3");
-//        System.loadLibrary("native-lib");
-//    }
+    static {
+        System.loadLibrary("opencv_java3");
+        System.loadLibrary("native-lib");
+    }
 
     // OpenCV의 카메라 뷰입니다.
     CameraBridgeViewBase cbvCamera;
     // 필터 목록을 담고있는 Spinner입니다.
     Spinner sFilter;
     ArrayAdapter spinnerAdapter;
+    // 사진 촬영하기 위한 버튼입니다.
+    Button btnTakePic;
 
     // SubBackground 필터에 쓰일 class입니다.
     // 픽셀에 변화가 생기는 부분을 찾아주는 역활을 합니다.
     BackgroundSubtractorMOG2 bsMOG2;
+
+    // 사진 찍기 버튼(btnTakePic)을 클릭한 경우 true로 변경되고 onCameraFrame > saveImg 순으로 촬영이 진행됩니다.
+    // 촬영이 완료되면 false로 다시 변경됩니다.
+    boolean takingPicture = false;
+    // 사진 촬영이 성공했는지 실패했는지에 따라 다른 Toast 메시지를 띄워주기 위해 사용되는 변수입니다.
+    boolean takenPicture = false;
+    // Toast를 띄울 때 사용하기 위한 Handler입니다.
+    Handler pictureHandler;
 
     // 카메라 프리뷰 모드를 변경하기 위해 사용되는 부분입니다.
     // 각 필터마다 하나의 모드를 갖습니다.
@@ -104,6 +123,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         cbvCamera = (CameraBridgeViewBase)findViewById(R.id.jcvCamera);
         sFilter = (Spinner)findViewById(R.id.sFilter);
+        btnTakePic = (Button)findViewById(R.id.btnTakePic);
+
+        btnTakePic.setOnClickListener(btnClickListener);
+        pictureHandler = new Handler();
 
         // CameraBridgeViewBase에 Listener를 등록하여 뷰가 시작될 때, 정지될때, 파괴될 때의 action을 정의해줍니다.
         cbvCamera.setVisibility(CameraBridgeViewBase.VISIBLE);
@@ -166,6 +189,17 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         });
 
     }
+
+    Button.OnClickListener btnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            switch (v.getId()){
+                case R.id.btnTakePic:
+                    takingPicture = true;
+                    break;
+            }
+        }
+    };
 
     @Override
     public void onPause()
@@ -235,12 +269,22 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         switch (MainActivity.viewMode) {
             case MainActivity.VIEW_MODE_RGBA:
                 // 일반 모드를 선택했기 때문에 아무 작업도 해주지 않습니다.
+
+                if(takingPicture){
+                    saveImg(rgba);
+                }
+
                 break;
 
             case MainActivity.VIEW_MODE_BLUR:
                 // input 영상에 blur 처리하여 return 해줍니다.
                 // size 안의 숫자를 크게 할 수록 심하게 blur 처리 됩니다.
                 Imgproc.blur(rgba, rgba, new Size(45, 45));
+
+                if(takingPicture){
+                    saveImg(rgba);
+                }
+
                 break;
 
             case MainActivity.VIEW_MODE_SEPIA:
@@ -250,10 +294,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 mSepiaKernel.put(1, 0, /* G */0.168f, 0.686f, 0.349f, 0f);
                 mSepiaKernel.put(2, 0, /* B */0.131f, 0.534f, 0.272f, 0f);
                 mSepiaKernel.put(3, 0, /* A */0.000f, 0.000f, 0.000f, 1f);
-
                 // inputframe에 sepia 색 정보를 입혀서 return합니다.
                 Core.transform(rgba, rgba, mSepiaKernel);
+
                 mSepiaKernel.release();
+
+                if(takingPicture){
+                    saveImg(rgba);
+                }
+
                 break;
 
             case MainActivity.VIEW_MODE_POSTERIZE:
@@ -261,23 +310,41 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 rgba.setTo(new Scalar(0, 0, 0, 255), mIntermediateMat);
                 Core.convertScaleAbs(rgba, mIntermediateMat, 1./16, 0);
                 Core.convertScaleAbs(mIntermediateMat, rgba, 16, 0);
+
+                if(takingPicture){
+                    saveImg(rgba);
+                }
+
                 break;
 
             case MainActivity.VIEW_MODE_PIXELIZE:
                 // Size의 크기로 픽셀들을 뭉뜨려줍니다. Size 안의 숫자가 클수록 더 심하게 모자이크처리됩니다.
                 Imgproc.resize(rgba, mIntermediateMat, new Size(30, 30), 0.1, 0.1, Imgproc.INTER_NEAREST);
                 Imgproc.resize(mIntermediateMat, rgba, rgba.size(), 0., 0., Imgproc.INTER_NEAREST);
+
+                if(takingPicture){
+                    saveImg(rgba);
+                }
+
                 break;
 
             case MainActivity.VIEW_MODE_NEGATIVE:
-//                rgbaInnerWindow = inputFrame.rgba();
-//                convertNegative(rgbaInnerWindow.getNativeObjAddr(), rgba.getNativeObjAddr());
+//                Mat rgbaInnerWindow = inputFrame.rgba();
+//                Mat rgbaInnerWindow2 = inputFrame.rgba();
+//                convertNegative(rgbaInnerWindow.getNativeObjAddr(), rgbaInnerWindow2.getNativeObjAddr());
+//                rgbaInnerWindow2.copyTo(rgba);
+//                rgbaInnerWindow.release();
 //                rgbaInnerWindow.release();
                 break;
 
             case MainActivity.VIEW_MODE_CANNY:
                 Imgproc.Canny(rgba, mIntermediateMat, 80, 90);
                 Imgproc.cvtColor(mIntermediateMat, rgba, Imgproc.COLOR_GRAY2BGRA, 4);
+
+                if(takingPicture){
+                    saveImg(rgba);
+                }
+
                 break;
 
             case MainActivity.VIEW_MODE_SOBEL:
@@ -291,7 +358,13 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 Core.convertScaleAbs(mIntermediateMat, mIntermediateMat, 3, 0);
                 // 추출할 값을 적용한 결과를 rgba에 적용하여 return할 수 있도록 합니다.
                 Imgproc.cvtColor(mIntermediateMat, rgba, Imgproc.COLOR_GRAY2BGRA, 4);
+
                 gray.release();
+
+                if(takingPicture){
+                    saveImg(rgba);
+                }
+
                 break;
 
             case MainActivity.VIEWM_MODE_BACKGROUND:
@@ -302,7 +375,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 Imgproc.cvtColor(brgba, brgb, Imgproc.COLOR_RGBA2RGB);
                 bsMOG2.setDetectShadows(false);
                 bsMOG2.apply(brgb, bmask, 0.01);
-
                 // backgroundsubtractor apply의 결과가 gray 이기 때문에 움직이는 물체에 색상을 입히기 위해서는 rgba frame을 이용해야 합니다.
                 // backgroundsubtractor apply의 결과은 bmask를 mask로 활용하여 rgba에 입혀줍니다.
                 Mat zeros = Mat.zeros(rgba.rows(), rgba.cols(), rgba.type());
@@ -314,9 +386,45 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 bmask.release();
                 zeros.release();
 
+                if(takingPicture){
+                    saveImg(rgba);
+                }
+
                 break;
         }
 
         return rgba;
+    }
+
+    public void saveImg(Mat rgba){
+        // 사진 촬영 요청을 성공적으로 받았으므로 재요청하지 않도록 takingPicture 값을 false로 바꾸ㅃ니다.
+        takingPicture = false;
+
+        // 저장할 사진의 파일 이름을 시간으로 설정합니다.
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss");
+        String currentDateandTime = sdf.format(new Date());
+
+        // 사진을 저장할 Directory 경로를 설정합니다.
+        File storageDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/MyFilterCamera/");
+        // 위에서 설정한 폴더가 없을 경우 생성해주는 부분입니다.
+        if (!storageDir.exists()) {
+            storageDir.mkdirs();
+        }
+
+        // 완성된 사진 경로입니다.
+        String imgName = Environment.getExternalStorageDirectory().getPath()+"/MyFilterCamera/" + currentDateandTime + ".jpg";
+
+        // opencv 함수를 이용하여 저장합니다.
+        takenPicture = Imgcodecs.imwrite(imgName, rgba);
+        pictureHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if(takenPicture){
+                    Toast.makeText(getApplicationContext(), "Success", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(getApplicationContext(), "Fail", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 }

@@ -25,7 +25,12 @@ extern "C"{
         Mat &matInput = *(Mat *)matAddrInput;
         Mat &matOutput = *(Mat *)matAddrOutput;
 
-        buildPyramid(matInput, matOutput, 100, BORDER_CONSTANT);
+        double contrast = 1;
+        int brightness = 10;
+
+        matInput.convertTo(matOutput, -1, contrast, brightness);
+
+
     }
 
 }

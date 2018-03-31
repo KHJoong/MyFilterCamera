@@ -23,10 +23,8 @@ extern "C" {
 #define com_example_myfiltercamera_MainActivity_VIEW_MODE_CANNY 6L
 #undef com_example_myfiltercamera_MainActivity_VIEW_MODE_SOBEL
 #define com_example_myfiltercamera_MainActivity_VIEW_MODE_SOBEL 7L
-#undef com_example_myfiltercamera_MainActivity_VIEW_MODE_ZOOM
-#define com_example_myfiltercamera_MainActivity_VIEW_MODE_ZOOM 8L
 #undef com_example_myfiltercamera_MainActivity_VIEWM_MODE_BACKGROUND
-#define com_example_myfiltercamera_MainActivity_VIEWM_MODE_BACKGROUND 9L
+#define com_example_myfiltercamera_MainActivity_VIEWM_MODE_BACKGROUND 8L
 /*
  * Class:     com_example_myfiltercamera_MainActivity
  * Method:    convertNegative
