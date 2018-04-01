@@ -414,6 +414,8 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         // 완성된 사진 경로입니다.
         String imgName = Environment.getExternalStorageDirectory().getPath()+"/MyFilterCamera/" + currentDateandTime + ".jpg";
 
+        // 그냥 저장하면 사진이 푸른 색으로 저장됩니다.
+        // BGR 색상 타입을 RGBA 타입으로 변경해줍니다.
         Imgproc.cvtColor(rgba, rgba,  Imgproc.COLOR_BGR2RGBA, 4);
 
         // opencv 함수를 이용하여 저장합니다.
