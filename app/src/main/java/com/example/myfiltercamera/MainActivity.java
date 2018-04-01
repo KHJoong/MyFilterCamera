@@ -414,6 +414,8 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         // 완성된 사진 경로입니다.
         String imgName = Environment.getExternalStorageDirectory().getPath()+"/MyFilterCamera/" + currentDateandTime + ".jpg";
 
+        Imgproc.cvtColor(rgba, rgba,  Imgproc.COLOR_BGR2RGBA, 4);
+
         // opencv 함수를 이용하여 저장합니다.
         takenPicture = Imgcodecs.imwrite(imgName, rgba);
         pictureHandler.post(new Runnable() {
