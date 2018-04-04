@@ -120,6 +120,12 @@ public abstract class CameraBridgeViewBase extends SurfaceView implements Surfac
         this.mCameraIndex = cameraIndex;
     }
 
+    // MainActivity에서 카메라를 전환하기 위해 현재 cameraIndex를 받아갑니다.
+    // 0이면 1로 1이면 0으로 전환하기 위해 사용됩니다.
+    public int getCameraIndex() {
+        return mCameraIndex;
+    }
+
     public interface CvCameraViewListener {
         /**
          * This method is invoked when camera preview has started. After this method is invoked

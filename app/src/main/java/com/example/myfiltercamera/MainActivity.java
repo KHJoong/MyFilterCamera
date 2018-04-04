@@ -60,6 +60,8 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     Button btnTakePic;
     // 영상 녹화하기 위한 버튼입니다.(녹화중에는 중지, 녹화중이 아닐 때는 녹화로 표시됩니다.)
     Button btnTakeVideo;
+    // 전면 카메라, 후면 카메라 전환할 수 있는 스위치 버튼입니다.
+    Button btnSwitch;
 
     // SubBackground 필터에 쓰일 class입니다.
     // 픽셀에 변화가 생기는 부분을 찾아주는 역활을 합니다.
@@ -142,6 +144,11 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         btnTakePic.setOnClickListener(btnClickListener);
         btnTakeVideo.setOnClickListener(btnClickListener);
         handler = new Handler();
+        btnSwitch = (Button)findViewById(R.id.btnSwitch);
+        btnSwitch.setOnClickListener(btnClickListener);
+
+        // 처음 실행될 때 후면 카메라를 기본 실행하도록 합니다.
+        cbvCamera.setCameraIndex(0);
 
         // CameraBridgeViewBase에 Listener를 등록하여 뷰가 시작될 때, 정지될때, 파괴될 때의 action을 정의해줍니다.
         cbvCamera.setVisibility(CameraBridgeViewBase.VISIBLE);
@@ -283,6 +290,19 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
                             }
                         }
                     });
+                    break;
+                case R.id.btnSwitch:
+                    // 전면 카메라, 후면 카메라를 전환하는 버튼입니다.
+                    // 0이 후면 카메라, 1이 전면 카메라입니다.
+                    if(cbvCamera.getCameraIndex()==0){
+                        cbvCamera.disableView();
+                        cbvCamera.setCameraIndex(1);
+                        cbvCamera.enableView();
+                    } else if(cbvCamera.getCameraIndex()==1){
+                        cbvCamera.disableView();
+                        cbvCamera.setCameraIndex(0);
+                        cbvCamera.enableView();
+                    }
                     break;
             }
         }

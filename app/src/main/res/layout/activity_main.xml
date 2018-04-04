@@ -21,6 +21,13 @@
         android:layout_height="45dp"
         android:orientation="horizontal">
 
+        <Button
+            android:id="@+id/btnSwitch"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="전환"/>
+
         <Spinner
             android:id="@+id/sFilter"
             android:layout_width="0dp"
