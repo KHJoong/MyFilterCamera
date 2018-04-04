@@ -7,6 +7,7 @@ import org.opencv.R;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -15,8 +16,10 @@ import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.media.MediaRecorder;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -55,6 +58,33 @@ public abstract class CameraBridgeViewBase extends SurfaceView implements Surfac
     public static final int CAMERA_ID_FRONT = 98;
     public static final int RGBA = 1;
     public static final int GRAY = 2;
+
+    // 녹화 기능을 추가하기 위해 바뀐 부분입니다.
+    // canvas는 대기상태일 때의 화면을 표시해주는 변수입니다.
+    // canvas2는 녹화 상태일 때 화면을 표시해주는 변수입니다.
+    Canvas canvas;
+    Canvas canvas2;
+    // setRecorder가 MainAcvitivty에서 불러질 때 넘긴 MediaRecorder를 담아둡니다.
+    protected MediaRecorder mRecorder;
+    // 받은 MediaRecorder에서 surface를 추출하여 담아둡니다.
+    protected Surface mSurface = null;
+
+    // getSurface 가 api 21부터 지원하여 TargetApi 지정해둡니다.
+    // 영상 녹화가 실행될 때 초기화해주는 부분입니다.
+    @TargetApi(21)
+    public void setRecorder(MediaRecorder rec) {
+        mRecorder = rec;
+        if (mRecorder != null) {
+            mSurface = mRecorder.getSurface();
+        } else {
+
+        }
+    }
+
+    // 영상 녹화가 끝날 때 해제해주는 부분입니다.
+    public void releaseRecord(){
+        mRecorder = null;
+    }
 
     public CameraBridgeViewBase(Context context, int cameraId) {
         super(context);
@@ -407,7 +437,8 @@ public abstract class CameraBridgeViewBase extends SurfaceView implements Surfac
         }
 
         if (bmpValid && mCacheBitmap != null) {
-            Canvas canvas = getHolder().lockCanvas();
+            // OpenCV에서 원래 있던 부분
+            canvas = getHolder().lockCanvas();
             if (canvas != null) {
                 canvas.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR);
                 if (BuildConfig.DEBUG)
@@ -433,6 +464,60 @@ public abstract class CameraBridgeViewBase extends SurfaceView implements Surfac
                 }
                 getHolder().unlockCanvasAndPost(canvas);
             }
+            // OpenCV에 원래 없었으나 동영상 촬영 기능을 추가하기 위해서 추가된 부분
+            if(mRecorder != null) {
+                canvas2 = mSurface.lockCanvas(null);
+
+                canvas2.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR);
+                Log.d(TAG, "mStretch value: " + mScale);
+
+                if (mScale != 0) {
+                    canvas2.drawBitmap(mCacheBitmap, new Rect(0, 0, mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
+                            new Rect((int) ((canvas2.getWidth() - mScale * mCacheBitmap.getWidth()) / 2),
+                                    (int) ((canvas2.getHeight() - mScale * mCacheBitmap.getHeight()) / 2),
+                                    (int) ((canvas2.getWidth() - mScale * mCacheBitmap.getWidth()) / 2 + mScale * mCacheBitmap.getWidth()),
+                                    (int) ((canvas2.getHeight() - mScale * mCacheBitmap.getHeight()) / 2 + mScale * mCacheBitmap.getHeight())), null);
+                } else {
+                    canvas2.drawBitmap(mCacheBitmap, new Rect(0, 0, mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
+                            new Rect((canvas2.getWidth() - mCacheBitmap.getWidth()) / 2,
+                                    (canvas2.getHeight() - mCacheBitmap.getHeight()) / 2,
+                                    (canvas2.getWidth() - mCacheBitmap.getWidth()) / 2 + mCacheBitmap.getWidth(),
+                                    (canvas2.getHeight() - mCacheBitmap.getHeight()) / 2 + mCacheBitmap.getHeight()), null);
+                }
+
+                if (mFpsMeter != null) {
+                    mFpsMeter.measure();
+                    mFpsMeter.draw(canvas2, 20, 30);
+                }
+                mSurface.unlockCanvasAndPost(canvas2);
+            }
+
+//            if(mRecorder != null) {
+//                canvas2 = mSurface.lockCanvas(null);
+//
+//                canvas2.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR);
+//                Log.d(TAG, "mStretch value: " + mScale);
+//
+//                if (mScale != 0) {
+//                    canvas2.drawBitmap(mCacheBitmap, new Rect(0, 0, mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
+//                            new Rect((int) ((canvas2.getWidth() - mScale * mCacheBitmap.getWidth()) / 2),
+//                                    (int) ((canvas2.getHeight() - mScale * mCacheBitmap.getHeight()) / 2),
+//                                    (int) ((canvas2.getWidth() - mScale * mCacheBitmap.getWidth()) / 2 + mScale * mCacheBitmap.getWidth()),
+//                                    (int) ((canvas2.getHeight() - mScale * mCacheBitmap.getHeight()) / 2 + mScale * mCacheBitmap.getHeight())), null);
+//                } else {
+//                    canvas2.drawBitmap(mCacheBitmap, new Rect(0, 0, mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
+//                            new Rect((canvas2.getWidth() - mCacheBitmap.getWidth()) / 2,
+//                                    (canvas2.getHeight() - mCacheBitmap.getHeight()) / 2,
+//                                    (canvas2.getWidth() - mCacheBitmap.getWidth()) / 2 + mCacheBitmap.getWidth(),
+//                                    (canvas2.getHeight() - mCacheBitmap.getHeight()) / 2 + mCacheBitmap.getHeight()), null);
+//                }
+//
+//                if (mFpsMeter != null) {
+//                    mFpsMeter.measure();
+//                    mFpsMeter.draw(canvas, 20, 30);
+//                }
+//                mSurface.unlockCanvasAndPost(canvas2);
+//            }
         }
     }
 

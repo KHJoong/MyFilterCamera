@@ -16,6 +16,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
+        android:id="@+id/llcontainer"
         android:layout_width="match_parent"
         android:layout_height="45dp"
         android:orientation="horizontal">
@@ -37,5 +38,13 @@
             android:text="촬영"/>
 
     </LinearLayout>
+
+    <Button
+        android:id="@+id/btnTakeVideo"
+        android:layout_width="75dp"
+        android:layout_height="45dp"
+        android:text="녹화"
+        android:layout_below="@id/llcontainer"
+        android:layout_alignParentRight="true"/>
 
 </RelativeLayout>

@@ -1,5 +1,6 @@
 package com.example.myfiltercamera;
 
+import android.media.MediaRecorder;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
@@ -31,6 +32,7 @@ import org.opencv.video.BackgroundSubtractorMOG2;
 import org.opencv.video.Video;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -55,6 +57,8 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     ArrayAdapter spinnerAdapter;
     // 사진 촬영하기 위한 버튼입니다.
     Button btnTakePic;
+    // 영상 녹화하기 위한 버튼입니다.(녹화중에는 중지, 녹화중이 아닐 때는 녹화로 표시됩니다.)
+    Button btnTakeVideo;
 
     // SubBackground 필터에 쓰일 class입니다.
     // 픽셀에 변화가 생기는 부분을 찾아주는 역활을 합니다.
@@ -66,7 +70,16 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     // 사진 촬영이 성공했는지 실패했는지에 따라 다른 Toast 메시지를 띄워주기 위해 사용되는 변수입니다.
     boolean takenPicture = false;
     // Toast를 띄울 때 사용하기 위한 Handler입니다.
-    Handler pictureHandler;
+    Handler handler;
+
+    // 영상 녹화 버튼(btnTakeVideo)을 클릭한 경우 true로 변경되고 mr(MediaRecorder)에 의해서 녹화가 시작됩니다.
+    // 완성된 영상은 videoPath에 저장됩니다.
+    // 영상 녹화를 위해 CameraBridgeViewBase class가 수정되었습니다.
+    // 1) deliverAndDrawFrame에서 canvas를 생성하고 그리는 부분에 영상녹화에서 사용되는 부분을 별도로 추가하였습니다.
+    // 2) setRecorder, releaseRecord 함수가 맨 위에 추가되었습니다. 녹화를 시작할 때 setRecorder이 실행되고 끝날 때 releaseRecord가 실행됩니다.
+    boolean takingVideo = false;
+    String videoPath;
+    MediaRecorder mr;
 
     // 카메라 프리뷰 모드를 변경하기 위해 사용되는 부분입니다.
     // 각 필터마다 하나의 모드를 갖습니다.
@@ -124,9 +137,10 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         cbvCamera = (CameraBridgeViewBase)findViewById(R.id.jcvCamera);
         sFilter = (Spinner)findViewById(R.id.sFilter);
         btnTakePic = (Button)findViewById(R.id.btnTakePic);
-
+        btnTakeVideo = (Button)findViewById(R.id.btnTakeVideo);
         btnTakePic.setOnClickListener(btnClickListener);
-        pictureHandler = new Handler();
+        btnTakeVideo.setOnClickListener(btnClickListener);
+        handler = new Handler();
 
         // CameraBridgeViewBase에 Listener를 등록하여 뷰가 시작될 때, 정지될때, 파괴될 때의 action을 정의해줍니다.
         cbvCamera.setVisibility(CameraBridgeViewBase.VISIBLE);
@@ -195,7 +209,74 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         public void onClick(View v) {
             switch (v.getId()){
                 case R.id.btnTakePic:
+                    // 사진 촬영 버튼을 클릭했을 때 실행되는 부분입니다.
                     takingPicture = true;
+                    break;
+                case R.id.btnTakeVideo:
+                    // 영상 녹화 버튼을 클릭했을 때 실행되는 부분입니다.
+                    // 버튼의 text를 바꾸기 위해서 핸들러를 사용합니다.
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(!takingVideo){
+                                // 한 버튼으로 녹화 시작과 끝을 구분합니다.
+                                // takingVideo 변수가 true면 녹화중, false면 대기모드로 구분합니다.
+                                takingVideo = true;
+
+                                Toast.makeText(getApplicationContext(), "녹화를 시작합니다.", Toast.LENGTH_SHORT).show();
+
+                                // 저장할 영상 파일의 경로를 받아옵니다.
+                                // type에 video를 넘겨줄 경우 mp4 확장자로 된 경로를 받아옵니다.
+                                videoPath = savefilepath("video");
+
+                                try {
+                                    // MediaRecorder 초기화하는 부분입니다.
+                                    mr = new MediaRecorder();
+                                    mr.setAudioSource(MediaRecorder.AudioSource.MIC);
+                                    mr.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+                                    mr.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+                                    mr.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+                                    mr.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+                                    mr.setVideoFrameRate(120);
+                                    mr.setAudioSamplingRate(16000);
+                                    mr.setVideoSize(cbvCamera.getWidth(), cbvCamera.getHeight());
+                                    mr.setOutputFile(videoPath);
+                                    mr.prepare();
+
+                                    // MediaRecorder 준비가 완료될 경우 CameraBridgeViewBase에
+                                    // MediaRecorder를 넘겨줘서 녹화할 수 있도록 합니다.
+                                    // OpenCV 기본 함수가 아닌 사용자 추가 함수입니다.
+                                    cbvCamera.setRecorder(mr);
+
+                                    // 설정이 완료되면 녹화를 시작합니다.
+                                    mr.start();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                // 버튼의 text를 중지로 바꿔서 녹화 정지를 할 수 있게 유도합니다.
+                                btnTakeVideo.setText("중지");
+                            } else {
+                                // 한 버튼으로 녹화 시작과 끝을 구분합니다.
+                                // takingVideo 변수가 true면 녹화중, false면 대기모드로 구분합니다.
+                                takingVideo = false;
+
+                                Toast.makeText(getApplicationContext(), "녹화를 종료합니다.", Toast.LENGTH_SHORT).show();
+
+                                if(mr != null){
+                                    // 선언했던 MediaRecorder를 멈추고 해제해줍니다.
+                                    mr.stop();
+                                    mr.release();
+                                    mr = null;
+
+                                    // 해제 완료되면 CameraBridgeViewBase에서도 쓰지 못하게 해제해줍니다.
+                                    // OpenCV 기본 함수가 아닌 사용자 추가 함수입니다.
+                                    cbvCamera.releaseRecord();
+                                }
+                                // 버튼의 text를 녹화로 바꿔서 새로운 녹화를 할 수 있게 유도합니다.
+                                btnTakeVideo.setText("녹화");
+                            }
+                        }
+                    });
                     break;
             }
         }
@@ -396,9 +477,10 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         return rgba;
     }
 
-    public void saveImg(Mat rgba){
-        // 사진 촬영 요청을 성공적으로 받았으므로 재요청하지 않도록 takingPicture 값을 false로 바꾸ㅃ니다.
-        takingPicture = false;
+    // 저장할 사진 or 영상의 실제 경로를 반환해주는 함수입니다.
+    // type이 img면 사진(.jpg), video면 영상(.mp4)의 경로를 반환합니다.
+    public String savefilepath(String type){
+        String filepath = "";
 
         // 저장할 사진의 파일 이름을 시간으로 설정합니다.
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss");
@@ -411,8 +493,25 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
             storageDir.mkdirs();
         }
 
-        // 완성된 사진 경로입니다.
-        String imgName = Environment.getExternalStorageDirectory().getPath()+"/MyFilterCamera/" + currentDateandTime + ".jpg";
+        if(type.equals("img")) {
+            // 완성된 사진 경로입니다.
+            filepath = Environment.getExternalStorageDirectory().getPath() + "/MyFilterCamera/" + currentDateandTime + ".jpg";
+        } else if(type.equals("video")){
+            // 완성된 비디오 경로입니다.
+            filepath = Environment.getExternalStorageDirectory().getPath() + "/MyFilterCamera/" + currentDateandTime + ".mp4";
+        }
+
+        return filepath;
+    }
+
+    // 사진을 저장하는 함수입니다.
+    // onCameraFrame에서 takingPicture의 값이 true일 때 실행됩니다.
+    public void saveImg(Mat rgba){
+        // 사진 촬영 요청을 성공적으로 받았으므로 재요청하지 않도록 takingPicture 값을 false로 바꾸ㅃ니다.
+        takingPicture = false;
+
+        // 받아온 사진 경로입니다.
+        String imgName = savefilepath("img");
 
         // 그냥 저장하면 사진이 푸른 색으로 저장됩니다.
         // BGR 색상 타입을 RGBA 타입으로 변경해줍니다.
@@ -420,7 +519,7 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
 
         // opencv 함수를 이용하여 저장합니다.
         takenPicture = Imgcodecs.imwrite(imgName, rgba);
-        pictureHandler.post(new Runnable() {
+        handler.post(new Runnable() {
             @Override
             public void run() {
                 if(takenPicture){
