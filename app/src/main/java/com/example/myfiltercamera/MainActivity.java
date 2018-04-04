@@ -1,5 +1,6 @@
 package com.example.myfiltercamera;
 
+import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
 import android.os.Environment;
 import android.os.Handler;
@@ -234,12 +235,17 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
                                     mr = new MediaRecorder();
                                     mr.setAudioSource(MediaRecorder.AudioSource.MIC);
                                     mr.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-                                    mr.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-                                    mr.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-                                    mr.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-                                    mr.setVideoFrameRate(120);
-                                    mr.setAudioSamplingRate(16000);
-                                    mr.setVideoSize(cbvCamera.getWidth(), cbvCamera.getHeight());
+                                    // 이 부분의 주석을 해제하면 바로 아래 setProfile을 주석처리해야합니다.
+                                    // 자세한 설정이 가능하지만 화질이 떨어집니다.
+//                                    mr.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+//                                    mr.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+//                                    mr.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+//                                    mr.setVideoFrameRate(120);
+//                                    mr.setAudioSamplingRate(16000);
+//                                    mr.setVideoSize(cbvCamera.getWidth(), cbvCamera.getHeight());
+                                    // 화질을 위해 위 부분을 주석처리하고 setProfile을 추가합니다.
+                                    // 위의 설정을 주석처리하지 않는 경우 에러가 발생합니다.
+                                    mr.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
                                     mr.setOutputFile(videoPath);
                                     mr.prepare();
 
