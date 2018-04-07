@@ -27,11 +27,19 @@ extern "C" {
 #define com_example_myfiltercamera_MainActivity_VIEWM_MODE_BACKGROUND 8L
 /*
  * Class:     com_example_myfiltercamera_MainActivity
- * Method:    convertNegative
- * Signature: (JJ)V
+ * Method:    loadCascade
+ * Signature: (Ljava/lang/String;)J
  */
-JNIEXPORT void JNICALL Java_com_example_myfiltercamera_MainActivity_convertNegative
-  (JNIEnv *, jobject, jlong, jlong);
+JNIEXPORT jlong JNICALL Java_com_example_myfiltercamera_MainActivity_loadCascade
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     com_example_myfiltercamera_MainActivity
+ * Method:    detect
+ * Signature: (JJJJ)V
+ */
+JNIEXPORT void JNICALL Java_com_example_myfiltercamera_MainActivity_detect
+  (JNIEnv *, jclass, jlong, jlong, jlong, jlong);
 
 #ifdef __cplusplus
 }

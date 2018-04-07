@@ -1,5 +1,6 @@
 package com.example.myfiltercamera;
 
+import android.content.res.AssetManager;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
 import android.os.Environment;
@@ -33,7 +34,10 @@ import org.opencv.video.BackgroundSubtractorMOG2;
 import org.opencv.video.Video;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -43,7 +47,13 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     // Native 함수를 사용하기 위해 먼저 선언해두는 부분입니다.
     // 이 함수는 Negative filter에서 사용하고자 했었습니다.
     // 미완성입니다.
-    public native void convertNegative(long matAddrInput, long matAddrResult);
+//    public native void convertNegative(long matAddrInput, long matAddrResult);
+
+    // 아래 native 함수들은 face detection을 위해 추가한 함수입니다.
+    public static native long loadCascade(String cascadeFileName );
+    public static native void detect(long cascadeClassifier_face, long cascadeClassifier_eye, long matAddrInput, long matAddrResult);
+    public long cascadeClassifier_face = 0;
+    public long cascadeClassifier_eye = 0;
 
     // 이 부분은 Android.mk의 LOCAL_MODULE에 입력한 lib 값을 사용하겠다고 선언해주는 부분입니다.
     static {
@@ -210,6 +220,7 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
             }
         });
 
+        read_cascade_file();
     }
 
     Button.OnClickListener btnClickListener = new View.OnClickListener() {
@@ -372,6 +383,9 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         Mat rgba = inputFrame.rgba();
+
+//        Core.flip(rgba, rgba, 1);
+        detect(cascadeClassifier_face, cascadeClassifier_eye, rgba.getNativeObjAddr(), rgba.getNativeObjAddr());
 
         switch (MainActivity.viewMode) {
             case MainActivity.VIEW_MODE_RGBA:
@@ -555,5 +569,47 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
                 }
             }
         });
+    }
+
+    // CascadeClassifier 객체를 로드하는 함수입니다.
+    // 작동 과정 : asset > 기본 위치(Environment.getExternalStorageDirectory().getPath()) > CascadeClassifier 객체로 로드
+    public void read_cascade_file(){
+        // 로드하기 전에 기기의 기본 위치에 파일을 복사합니다.
+        copyFile("haarcascade_frontalface_default.xml");
+        copyFile("haarcascade_eye.xml");
+
+        // loadCascade 메소드는 외부 저장소의 특정 위치에서 해당 파일을 읽어와서 CascadeClassifier 객체로 로드합니다.
+        cascadeClassifier_face = loadCascade( "haarcascade_frontalface_default.xml");
+        cascadeClassifier_eye = loadCascade( "haarcascade_eye.xml");
+    }
+
+    // Assets에서 filename에 해당하는 파일을 가져와 기기의 기본 위치에 저장하는 함수입니다.
+    // 기본 위치 : Environment.getExternalStorageDirectory().getPath()
+    public void copyFile(String filename){
+        String baseDir = Environment.getExternalStorageDirectory().getPath();
+        String pathDir = baseDir + File.separator + filename;
+
+        AssetManager assetManager = this.getAssets();
+
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
+
+        try {
+            inputStream = assetManager.open(filename);
+            outputStream = new FileOutputStream(pathDir);
+
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            inputStream.close();
+            inputStream = null;
+            outputStream.flush();
+            outputStream.close();
+            outputStream = null;
+        } catch (Exception e) {
+            e.getStackTrace();
+        }
     }
 }
