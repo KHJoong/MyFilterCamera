@@ -3,6 +3,8 @@ package com.example.myfiltercamera;
 import android.content.res.AssetManager;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
@@ -296,6 +298,15 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
                                     // OpenCV 기본 함수가 아닌 사용자 추가 함수입니다.
                                     cbvCamera.releaseRecord();
                                 }
+
+                                // 갤러리에 나타나게 하는 부분입니다.
+                                MediaScannerConnection.scanFile(getApplicationContext(),
+                                        new String[]{videoPath}, null,
+                                        new MediaScannerConnection.OnScanCompletedListener() {
+                                            public void onScanCompleted(String path, Uri uri) {
+                                            }
+                                        });
+
                                 // 버튼의 text를 녹화로 바꿔서 새로운 녹화를 할 수 있게 유도합니다.
                                 btnTakeVideo.setText("녹화");
                             }
@@ -385,6 +396,7 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         Mat rgba = inputFrame.rgba();
 
 //        Core.flip(rgba, rgba, 1);
+        // 이 부분은 얼굴 탐지를 위해 사용되는 부분입니다.
         detect(cascadeClassifier_face, cascadeClassifier_eye, rgba.getNativeObjAddr(), rgba.getNativeObjAddr());
 
         switch (MainActivity.viewMode) {
@@ -559,6 +571,15 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
 
         // opencv 함수를 이용하여 저장합니다.
         takenPicture = Imgcodecs.imwrite(imgName, rgba);
+
+        // 갤러리에 나타나게 하는 부분입니다.
+        MediaScannerConnection.scanFile(this,
+                new String[]{imgName}, null,
+                new MediaScannerConnection.OnScanCompletedListener() {
+                    public void onScanCompleted(String path, Uri uri) {
+                    }
+                });
+
         handler.post(new Runnable() {
             @Override
             public void run() {
@@ -571,6 +592,7 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         });
     }
 
+    // 이 부분은 얼굴 탐지를 위해 사용되는 부분입니다.
     // CascadeClassifier 객체를 로드하는 함수입니다.
     // 작동 과정 : asset > 기본 위치(Environment.getExternalStorageDirectory().getPath()) > CascadeClassifier 객체로 로드
     public void read_cascade_file(){
@@ -583,6 +605,7 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         cascadeClassifier_eye = loadCascade( "haarcascade_eye.xml");
     }
 
+    // 이 부분은 얼굴 탐지를 위해 사용되는 부분입니다.
     // Assets에서 filename에 해당하는 파일을 가져와 기기의 기본 위치에 저장하는 함수입니다.
     // 기본 위치 : Environment.getExternalStorageDirectory().getPath()
     public void copyFile(String filename){
