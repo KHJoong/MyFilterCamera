@@ -36,10 +36,10 @@ JNIEXPORT jlong JNICALL Java_com_example_myfiltercamera_MainActivity_loadCascade
 /*
  * Class:     com_example_myfiltercamera_MainActivity
  * Method:    detect
- * Signature: (JJJJ)V
+ * Signature: (JJJJJ)V
  */
 JNIEXPORT void JNICALL Java_com_example_myfiltercamera_MainActivity_detect
-  (JNIEnv *, jclass, jlong, jlong, jlong, jlong);
+  (JNIEnv *, jclass, jlong, jlong, jlong, jlong, jlong);
 
 #ifdef __cplusplus
 }

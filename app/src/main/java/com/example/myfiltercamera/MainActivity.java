@@ -22,6 +22,7 @@ import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -53,7 +54,7 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
 
     // 아래 native 함수들은 face detection을 위해 추가한 함수입니다.
     public static native long loadCascade(String cascadeFileName );
-    public static native void detect(long cascadeClassifier_face, long cascadeClassifier_eye, long matAddrInput, long matAddrResult);
+    public static native void detect(long cascadeClassifier_face, long cascadeClassifier_eye, long matAddrInput, long matAddrResult, long matAddrMask);
     public long cascadeClassifier_face = 0;
     public long cascadeClassifier_eye = 0;
 
@@ -67,13 +68,16 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     CameraBridgeViewBase cbvCamera;
     // 필터 목록을 담고있는 Spinner입니다.
     Spinner sFilter;
-    ArrayAdapter spinnerAdapter;
+    ArrayAdapter sFilterAdapter;
     // 사진 촬영하기 위한 버튼입니다.
     Button btnTakePic;
     // 영상 녹화하기 위한 버튼입니다.(녹화중에는 중지, 녹화중이 아닐 때는 녹화로 표시됩니다.)
     Button btnTakeVideo;
     // 전면 카메라, 후면 카메라 전환할 수 있는 스위치 버튼입니다.
     Button btnSwitch;
+    // 얼굴에 씌울 가면의 목록을 담고있는 Spinner입니다.
+    Spinner sMask;
+    ArrayAdapter sMaskAdapter;
 
     // SubBackground 필터에 쓰일 class입니다.
     // 픽셀에 변화가 생기는 부분을 찾아주는 역활을 합니다.
@@ -86,6 +90,11 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     boolean takenPicture = false;
     // Toast를 띄울 때 사용하기 위한 Handler입니다.
     Handler handler;
+    // 마스크를 씌우고있는 상황인지 아닌지에 대한 변수를 담습니다.
+    // 기본값은 false로 마스크를 사용하지 않는 상태입니다. 사용하게 될 경우 true로 바꿔줍니다.
+    boolean isMasking = false;
+    // drawable에 있는 마스크들의 이미지를 Mat으로 변경하여 저장합니다.
+    Mat maskImg;
 
     // 영상 녹화 버튼(btnTakeVideo)을 클릭한 경우 true로 변경되고 mr(MediaRecorder)에 의해서 녹화가 시작됩니다.
     // 완성된 영상은 videoPath에 저장됩니다.
@@ -153,6 +162,7 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         sFilter = (Spinner)findViewById(R.id.sFilter);
         btnTakePic = (Button)findViewById(R.id.btnTakePic);
         btnTakeVideo = (Button)findViewById(R.id.btnTakeVideo);
+        sMask = (Spinner)findViewById(R.id.sMask);
         btnTakePic.setOnClickListener(btnClickListener);
         btnTakeVideo.setOnClickListener(btnClickListener);
         handler = new Handler();
@@ -178,10 +188,10 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         filterList.add("Sobel");
         filterList.add("SubBackground");
         // 필터의 종류를 담고있는 ArrayList를 이용하여 Adapter에 등록합니다.
-        spinnerAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, filterList);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sFilterAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, filterList);
+        sFilterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         // 필터 종류를 등록한 Adapter를 Spinner에 연결해줍니다.
-        sFilter.setAdapter(spinnerAdapter);
+        sFilter.setAdapter(sFilterAdapter);
         sFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -213,6 +223,84 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
                     case 8:
                         viewMode = VIEWM_MODE_BACKGROUND;
                         break;
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+
+        // Spinner에 등록하기 위해 마스크의 종류를 ArrayList에 담습니다.
+        ArrayList<String> maskList = new ArrayList<>();
+        maskList.add("None");
+        maskList.add("Mask 1");
+        maskList.add("Mask 2");
+        maskList.add("Mask 3");
+        maskList.add("Mask 4");
+        maskList.add("Mask 5");
+        maskList.add("Mask 6");
+        maskList.add("Mask 7");
+        maskList.add("Mask 8");
+        maskList.add("Mask 9");
+        maskList.add("Mask 10");
+        // 마스크의 종류를 담고있는 ArrayList를 이용하여 Adapter에 등록합니다.
+        sMaskAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, maskList);
+        sMaskAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        // 마스크 종류를 등록한 Adapter를 Spinner에 연결해줍니다.
+        sMask.setAdapter(sMaskAdapter);
+        sMask.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                try{
+                    switch (position){
+                        case 0:
+                            isMasking = false;
+                            break;
+                        case 1:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask1);
+                            isMasking = true;
+                            break;
+                        case 2:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask2);
+                            isMasking = true;
+                            break;
+                        case 3:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask3);
+                            isMasking = true;
+                            break;
+                        case 4:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask4);
+                            isMasking = true;
+                            break;
+                        case 5:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask5);
+                            isMasking = true;
+                            break;
+                        case 6:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask6);
+                            isMasking = true;
+                            break;
+                        case 7:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask7);
+                            isMasking = true;
+                            break;
+                        case 8:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask8);
+                            isMasking = true;
+                            break;
+                        case 9:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask9);
+                            isMasking = true;
+                            break;
+                        case 10:
+                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask10);
+                            isMasking = true;
+                            break;
+                    }
+                } catch (IOException e){
+
                 }
             }
 
@@ -395,9 +483,12 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         Mat rgba = inputFrame.rgba();
 
-//        Core.flip(rgba, rgba, 1);
-        // 이 부분은 얼굴 탐지를 위해 사용되는 부분입니다.
-        detect(cascadeClassifier_face, cascadeClassifier_eye, rgba.getNativeObjAddr(), rgba.getNativeObjAddr());
+        if(isMasking){
+//            Core.flip(rgba, rgba, 1);
+
+            // 이 부분은 얼굴 탐지를 위해 사용되는 부분입니다.
+            detect(cascadeClassifier_face, cascadeClassifier_eye, rgba.getNativeObjAddr(), rgba.getNativeObjAddr(), maskImg.getNativeObjAddr());
+        }
 
         switch (MainActivity.viewMode) {
             case MainActivity.VIEW_MODE_RGBA:
@@ -597,12 +688,15 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
     // 작동 과정 : asset > 기본 위치(Environment.getExternalStorageDirectory().getPath()) > CascadeClassifier 객체로 로드
     public void read_cascade_file(){
         // 로드하기 전에 기기의 기본 위치에 파일을 복사합니다.
-        copyFile("haarcascade_frontalface_default.xml");
+        copyFile("haarcascade_frontalface_alt2.xml");
         copyFile("haarcascade_eye.xml");
 
         // loadCascade 메소드는 외부 저장소의 특정 위치에서 해당 파일을 읽어와서 CascadeClassifier 객체로 로드합니다.
-        cascadeClassifier_face = loadCascade( "haarcascade_frontalface_default.xml");
+        cascadeClassifier_face = loadCascade( "haarcascade_frontalface_alt2.xml");
         cascadeClassifier_eye = loadCascade( "haarcascade_eye.xml");
+
+        // CascadeClassifier 객체로 로드가 완료된 후에 마스크를 선택할 수 있도록 합니다.
+        sMask.setVisibility(View.VISIBLE);
     }
 
     // 이 부분은 얼굴 탐지를 위해 사용되는 부분입니다.

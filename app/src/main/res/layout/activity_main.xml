@@ -32,10 +32,7 @@
             android:id="@+id/sFilter"
             android:layout_width="0dp"
             android:layout_height="45dp"
-            android:layout_weight="4"
-            android:layout_marginRight="8dp"
-            android:layout_marginLeft="8dp"
-            android:layout_marginTop="4dp"/>
+            android:layout_weight="4"/>
 
         <Button
             android:id="@+id/btnTakePic"
@@ -46,12 +43,28 @@
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/btnTakeVideo"
-        android:layout_width="75dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="45dp"
-        android:text="녹화"
-        android:layout_below="@id/llcontainer"
-        android:layout_alignParentRight="true"/>
+        android:orientation="horizontal"
+        android:layout_below="@id/llcontainer">
+
+        <Spinner
+            android:id="@+id/sMask"
+            android:layout_width="0dp"
+            android:layout_height="45dp"
+            android:layout_weight="5"
+            android:visibility="invisible"/>
+
+        <Button
+            android:id="@+id/btnTakeVideo"
+            android:layout_width="0dp"
+            android:layout_height="45dp"
+            android:layout_weight="1"
+            android:text="녹화"/>
+
+    </LinearLayout>
+
+
 
 </RelativeLayout>
