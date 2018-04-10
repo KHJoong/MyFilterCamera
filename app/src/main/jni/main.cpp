@@ -96,16 +96,12 @@ extern "C"{
         // gray scale의 이미지를 검정색과 흰색으로만 표현되도록 변경하여 binaryMask에 담음
         Mat binaryMask;
         threshold(grayMask,binaryMask,230,255,CV_THRESH_BINARY_INV);
-        // resizeMask(색 있는 마스크)로 resultMask(흰색 배경 없앤 완성된 마스크)를 만들 때
-        // binaryMask(흰,검으로 이뤄진 마스크)에서 0이 아닌 부분에만 복사하도록 함
-        Mat resultMask;
-        resizeMask.copyTo(resultMask, binaryMask);
-
         // 마스크를 적용할 부분을 원래 사진에서 찾음
         Rect roi(center.x - face_size.width/2, center.y - face_size.width/2, face_size.width, face_size.width);
         Mat srcRoi(src, roi);
         // 찾은 부분에 마스크를 적용함
-        addWeighted(srcRoi, 1, resultMask, 1, 0, srcRoi);
+        // binaryMask에서 값이 0인 부분(검정부분)을 제외한 나머지 부분에 resizeMask를 srcRoi에 복사함
+        resizeMask.copyTo(srcRoi, binaryMask);
 
         return src;
     }
