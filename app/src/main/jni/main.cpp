@@ -82,50 +82,33 @@ extern "C"{
         return scale;
     }
 
-Mat putMask(Mat src, Mat mask, Point center, Size face_size){
+    Mat putMask(Mat src, Mat mask, Point center, Size face_size){
 
-    Mat mask_resized;
-    Mat src_roi;
-    Mat roi_gray;
+        // 마스크 크기를 얼굴 크기에 맞게 resize하여 resizeMask에 담음
+        Mat resizeMask;
+        resize(mask,resizeMask,face_size);
+        cvtColor(resizeMask, resizeMask, COLOR_BGR2RGBA);
 
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "Start putMask");
-    resize(mask ,mask_resized,face_size);
+        // 마스크 이미지의 흰색 배경을 투명하게 처리하기위한 부분
+        // 먼저 gray scale로 바꿔 grayMask에 담음
+        Mat grayMask;
+        cvtColor(resizeMask, grayMask, COLOR_RGBA2GRAY);
+        // gray scale의 이미지를 검정색과 흰색으로만 표현되도록 변경하여 binaryMask에 담음
+        Mat binaryMask;
+        threshold(grayMask,binaryMask,230,255,CV_THRESH_BINARY_INV);
+        // resizeMask(색 있는 마스크)로 resultMask(흰색 배경 없앤 완성된 마스크)를 만들 때
+        // binaryMask(흰,검으로 이뤄진 마스크)에서 0이 아닌 부분에만 복사하도록 함
+        Mat resultMask;
+        resizeMask.copyTo(resultMask, binaryMask);
 
-    Rect roi((int) (center.x - face_size.width/2), (int) (center.y - face_size.height/2),(int) face_size.width, (int) face_size.height);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "Roi Rec");
-    src(roi).copyTo(src_roi);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "src extract");
-    Mat mask_grey;
-    Mat roi_rgb;
-    cvtColor(mask_resized,mask_grey, COLOR_BGRA2GRAY);
-    threshold(mask_grey,mask_grey,230,255, THRESH_BINARY_INV);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "Set Threshold");
-    std::vector<Mat> maskChannels(3);
-    std::vector<Mat> result_mask(3);
+        // 마스크를 적용할 부분을 원래 사진에서 찾음
+        Rect roi(center.x - face_size.width/2, center.y - face_size.width/2, face_size.width, face_size.width);
+        Mat srcRoi(src, roi);
+        // 찾은 부분에 마스크를 적용함
+        addWeighted(srcRoi, 1, resultMask, 1, 0, srcRoi);
 
-    split(mask_resized, maskChannels);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "mask resize");
-    bitwise_and(maskChannels[0],mask_grey, result_mask[0]);
-    bitwise_and(maskChannels[1],mask_grey, result_mask[1]);
-    bitwise_and(maskChannels[2],mask_grey, result_mask[2]);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "first bitwise");
-    merge(result_mask, roi_gray);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "merge");
-    bitwise_not(mask_grey,mask_grey);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "second bitwise");
-    std::vector<Mat> srcChannels(3);
-    split(src_roi, srcChannels);
-    bitwise_and(srcChannels[0],mask_grey, result_mask[0]);
-    bitwise_and(srcChannels[1],mask_grey, result_mask[1]);
-    bitwise_and(srcChannels[2],mask_grey, result_mask[2]);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "third bitwise");
-    merge(result_mask, roi_rgb);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "merge");
-    addWeighted(roi_gray,1, roi_rgb,1,0, roi_rgb);
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "addweighted");
-    roi_rgb.copyTo(Mat(src, roi));
-    __android_log_print(ANDROID_LOG_DEBUG, (char *) "native-lib ::", "last copy to");
-    return src;}
+        return src;
+    }
 
     /*
     * Class:     com_example_myfiltercamera_MainActivity
@@ -177,9 +160,11 @@ Mat putMask(Mat src, Mat mask, Point center, Size face_size){
             double real_facesize_height = faces[i].height / resizeRatio;
             // 탐지된 좌표를 기준으로 중심 찾기
             Point center( real_facesize_x + real_facesize_width / 2, real_facesize_y + real_facesize_height/2);
+            // 얼굴 사이즈
+            Size face_size(real_facesize_width, real_facesize_height);
+            // 마스크 씌우는 함수
+            img_result = putMask(img_result, img_mask, center, face_size);
 
-
-            img_result = putMask(img_result, img_mask, center, Size(real_facesize_width, real_facesize_height));
 //            // 탐지된 얼굴에 타원 그리기
 //            ellipse(img_result, center, Size( real_facesize_width / 2, real_facesize_height / 2), 0, 0, 360, Scalar(255, 0, 255), 30, 8, 0);
 //

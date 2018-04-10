@@ -244,7 +244,6 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
         maskList.add("Mask 7");
         maskList.add("Mask 8");
         maskList.add("Mask 9");
-        maskList.add("Mask 10");
         // 마스크의 종류를 담고있는 ArrayList를 이용하여 Adapter에 등록합니다.
         sMaskAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, maskList);
         sMaskAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -287,14 +286,10 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
                             isMasking = true;
                             break;
                         case 8:
-                            maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask8);
-                            isMasking = true;
-                            break;
-                        case 9:
                             maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask9);
                             isMasking = true;
                             break;
-                        case 10:
+                        case 9:
                             maskImg = Utils.loadResource(MainActivity.this, R.drawable.mask10);
                             isMasking = true;
                             break;
@@ -488,6 +483,8 @@ public class MainActivity extends AppCompatActivity implements JavaCameraView.Cv
 
             // 이 부분은 얼굴 탐지를 위해 사용되는 부분입니다.
             detect(cascadeClassifier_face, cascadeClassifier_eye, rgba.getNativeObjAddr(), rgba.getNativeObjAddr(), maskImg.getNativeObjAddr());
+//            Imgproc.resize(maskImg, maskImg, rgba.size());
+//            maskImg.copyTo(rgba);
         }
 
         switch (MainActivity.viewMode) {
